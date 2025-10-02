@@ -6,22 +6,45 @@ const mysql = require('mysql2/promise');
 const cors = require('cors');
 const path = require('path');
 
-const PORT = process.env.PORT || 3000;
+
 
 const app = express();
+
+const BASIC_USER = process.env.BASIC_USER;
+const BASIC_PASS = process.env.BASIC_PASS;
+
+app.use((req, res, next) => {
+  if (!BASIC_USER) return next(); // disabled unless env set
+  const auth = req.headers.authorization;
+  if (!auth) {
+    res.setHeader('WWW-Authenticate', 'Basic realm="Admin"');
+    return res.status(401).send('Auth required');
+  }
+  const token = auth.split(' ')[1] || '';
+  const decoded = Buffer.from(token, 'base64').toString('utf8');
+  const [u,p] = decoded.split(':');
+  if (u === BASIC_USER && p === BASIC_PASS) return next();
+  res.setHeader('WWW-Authenticate', 'Basic realm="Admin"');
+  return res.status(401).send('Auth required');
+});
+
 app.use(cors());
 app.use(express.json());
 
 // server.js — DB config (use env vars)
 const DB_CONFIG = {
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'church_admin',
-  password: process.env.DB_PASSWORD || 'stephens!@1234.',
-  database: process.env.DB_NAME || 'church_db',
+  host: process.env.MYSQLHOST || process.env.DB_HOST || 'localhost',
+  user: process.env.MYSQLUSER || process.env.DB_USER || 'root',
+  password: process.env.MYSQLPASSWORD || process.env.DB_PASSWORD || '',
+  database: process.env.MYSQLDATABASE || process.env.DB_NAME || 'railway',
+  port: Number(process.env.MYSQLPORT || process.env.DB_PORT || 3306),
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
 };
+
+const PORT = process.env.PORT || 3000;
+
 
 
 // ---------------------------------------------
