@@ -1,0 +1,295 @@
+<!-- save as public/index.optionA.html (or overwrite index.html) -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Church DB — Admin (Option A: Collapsed Grid)</title>
+<style>
+/* --- FORCE GLOBAL THEME + RESET --- */
+:root {
+  --bg: #f5f7fa;
+  --card: #ffffff;
+  --text: #111827;
+  --border: #e5e7eb;
+  --muted: #6b7280;
+  --accent: #10b981;
+}
+
+/* dark overrides (applied via .theme-dark on #page) */
+.theme-dark, .theme-dark * {
+  --bg: #0b1220 !important;
+  --card: #0f1724 !important;
+  --text: #e6eef6 !important;
+  --border: #1f2a37 !important;
+  --muted: #9ca3af !important;
+  --accent: #10b981 !important;
+}
+
+/* Hard reset of page — remove margins/padding and force bg everywhere */
+html, body {
+  margin: 0 !important;
+  padding: 0 !important;
+  height: 100% !important;
+  min-height: 100% !important;
+  background: var(--bg) !important;
+  color: var(--text) !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Ensure the page element is full-bleed and reflects theme class */
+#page {
+  min-height: 100vh;
+  background: var(--bg) !important;
+  color: var(--text) !important;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Make sure viewport width is filled (prevents thin white gutters on some browsers) */
+body, html {
+  width: 100vw !important;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Force scrollbar track/background to theme colors (Chrome/WebKit) */
+::-webkit-scrollbar { width: 12px; height: 12px; }
+::-webkit-scrollbar-track { background: var(--bg) !important; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06) !important; border-radius:8px; }
+.theme-dark ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06) !important; }
+
+/* App container: keep it centered but ensure background is card color */
+.app {
+  box-sizing: border-box;
+  max-width: 1200px;
+  margin: 18px auto;
+  padding: 12px;
+  min-height: calc(100vh - 36px);
+  background: var(--card) !important;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+/* Card & controls */
+header{display:flex;justify-content:space-between;align-items:center;gap:12px}
+h1{margin:0;font-size:20px}
+.muted{color:var(--muted);font-size:13px}
+.controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;margin-top:12px;box-shadow:0 6px 18px rgba(0,0,0,0.03)}
+input[type="text"]{padding:8px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text)}
+button{background:var(--accent);color:#fff;border:none;padding:8px 10px;border-radius:8px;cursor:pointer}
+button.ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
+
+/* Table wrapper */
+.table-wrapper{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-top:10px;border-radius:8px;background:transparent}
+
+/* ================= Option A: Collapsed grid (single-line borders) ================= */
+table {
+  width: 100%;
+  min-width: 1100px;       /* forces horizontal scroll when needed */
+  border-collapse: collapse; /* IMPORTANT: single continuous grid */
+  background: transparent;
+}
+
+/* header styling */
+thead th {
+  background: rgba(255,255,255,0.01);
+  color: var(--muted);
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+
+/* single subtle border for dark mode; tweak the alpha for strength */
+th, td {
+  padding: 10px 12px;
+  border: 1px solid rgba(255,255,255,0.04);
+  text-align: left;
+  white-space: nowrap;
+}
+
+/* center sacraments and employed */
+th.sac-col, td.sac-col { text-align:center; }
+
+/* hover row */
+tbody tr:hover td { background: rgba(255,255,255,0.02); }
+
+/* ticks/crosses */
+.tick{color:limegreen;font-weight:700}
+.cross{color:#ff6b6b;font-weight:700}
+
+/* misc */
+.error{color:#ffb4b4;background:rgba(255,0,0,0.05);padding:8px;border-radius:6px;margin-top:8px}
+.muted-block{margin-top:8px;color:var(--muted);font-size:13px}
+footer{margin-top:16px;color:var(--muted);font-size:13px}
+
+/* small screens */
+@media (max-width: 900px) {
+  table { min-width: 900px; }
+}
+</style>
+
+</head>
+<body id="page" class="">
+  <div class="app" id="app">
+    <header>
+      <div>
+        <h1>Church DB — Admin</h1>
+        <div class="muted">Search, view families & members — Light/Dark theme</div>
+      </div>
+      <div class="controls">
+        <label style="display:flex;align-items:center;gap:8px">
+          <input id="themeCheckbox" type="checkbox" /> <span class="muted">Dark</span>
+        </label>
+      </div>
+    </header>
+
+    <div class="card">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <input id="srInput" placeholder="Family Sr. No — e.g. F001" />
+        <button id="btnSr">Search Sr</button>
+
+        <input id="headInput" placeholder="Head of Family (partial)" />
+        <button id="btnHead">Search Head</button>
+
+        <input id="memberInput" placeholder="Member name (partial)" />
+        <button id="btnMember">Search Member</button>
+
+        <div style="flex:1"></div>
+
+        <button id="btnAllFamilies" class="ghost">View All Families</button>
+        <button id="btnAllMembers">View All Members</button>
+      </div>
+
+      <div id="resultArea" class="card" style="margin-top:12px"></div>
+    </div>
+
+    <div class="muted-block">Tip: horizontal scroll appears when table is wider than the view (drag or use scrollbar).</div>
+    <footer>Local admin UI — add authentication before exposing to a network.</footer>
+  </div>
+
+<script>
+/* Theme initialisation */
+const pageEl = document.getElementById('page');
+const themeCheckbox = document.getElementById('themeCheckbox');
+(function() {
+  const saved = localStorage.getItem('church_theme');
+  const prefers = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const useDark = saved ? (saved === 'dark') : prefers;
+  if(useDark) pageEl.classList.add('theme-dark'); else pageEl.classList.remove('theme-dark');
+  themeCheckbox.checked = useDark;
+})();
+themeCheckbox.addEventListener('change', () => {
+  if(themeCheckbox.checked) pageEl.classList.add('theme-dark');
+  else pageEl.classList.remove('theme-dark');
+  localStorage.setItem('church_theme', themeCheckbox.checked ? 'dark' : 'light');
+});
+
+/* Fetch helpers and renderers */
+async function fetchJson(path){ const r = await fetch(path); if(!r.ok){ const txt = await r.text().catch(()=>r.statusText); throw new Error(txt||r.statusText); } return r.json(); }
+function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function renderDynamicTable(rows, sacColumns=[]){
+  if(!rows || rows.length===0) return '<div class="muted">No results</div>';
+  const seen=new Set(); const cols=[];
+  for(const r of rows) for(const k of Object.keys(r)) if(!seen.has(k)){ seen.add(k); cols.push(k); }
+  let html=`<div class="table-wrapper"><table><thead><tr>`;
+  for(const col of cols){
+    const sacClass = sacColumns.includes(col) ? ' class="sac-col"' : '';
+    html+=`<th${sacClass}>${escapeHtml(col)}</th>`;
+  }
+  html+=`</tr></thead><tbody>`;
+  for(const r of rows){
+    html+='<tr>';
+    for(const col of cols){
+      let val=r[col];
+      if(sacColumns.includes(col)){
+        val=(val===1||val===true||String(val)==='1')?'<span class="tick">✅</span>':'<span class="cross">❌</span>';
+      } else if(col.toLowerCase().includes('dob') && val){
+        const dt=new Date(val); val = isNaN(dt)?val:dt.toLocaleDateString();
+      } else if(typeof val==='boolean'){ val = val? 'Yes':'No'; }
+      html+=`<td${sacColumns.includes(col)?' class="sac-col"':''}>${val ?? ''}</td>`;
+    }
+    html+='</tr>';
+  }
+  html+='</tbody></table></div>';
+  return html;
+}
+
+function renderFamilyMembers(members){
+  const normalized = members.map(m=>({
+    sr_no_in_family: m.sr_no_in_family ?? '',
+    full_name: m.full_name ?? '',
+    relationship: m.relationship ?? '',
+    sex: m.sex ?? '',
+    dob: m.dob ?? '',
+    baptism: m.baptism ?? 0,
+    communion: m.communion ?? 0,
+    confirmation: m.confirmation ?? 0,
+    marriage: m.marriage ?? 0,
+    employed: m.employed ?? 0
+  }));
+  let html=`<h3>Members (${normalized.length})</h3>`;
+  html+=`<div class="table-wrapper"><table><thead><tr>
+    <th>#</th><th>Name</th><th>Relation</th><th>Sex</th><th>DOB</th>
+    <th class="sac-col">Bap</th><th class="sac-col">Com</th><th class="sac-col">Con</th><th class="sac-col">Mar</th><th class="sac-col">Emp</th>
+  </tr></thead><tbody>`;
+  for(const m of normalized){
+    const dob = m.dob ? (isNaN(new Date(m.dob)) ? m.dob : new Date(m.dob).toLocaleDateString()) : '';
+    html+=`<tr>
+      <td>${escapeHtml(m.sr_no_in_family)}</td>
+      <td>${escapeHtml(m.full_name)}</td>
+      <td>${escapeHtml(m.relationship)}</td>
+      <td>${escapeHtml(m.sex)}</td>
+      <td>${escapeHtml(dob)}</td>
+      <td class="sac-col">${m.baptism ? '<span class="tick">✅</span>' : '<span class="cross">❌</span>'}</td>
+      <td class="sac-col">${m.communion ? '<span class="tick">✅</span>' : '<span class="cross">❌</span>'}</td>
+      <td class="sac-col">${m.confirmation ? '<span class="tick">✅</span>' : '<span class="cross">❌</span>'}</td>
+      <td class="sac-col">${m.marriage ? '<span class="tick">✅</span>' : '<span class="cross">❌</span>'}</td>
+      <td class="sac-col">${m.employed ? '<span class="tick">✅</span>' : '<span class="cross">❌</span>'}</td>
+    </tr>`;
+  }
+  html+='</tbody></table></div>';
+  return html;
+}
+
+/* Event bindings */
+document.getElementById('btnSr').addEventListener('click', async ()=>{
+  const sr=document.getElementById('srInput').value.trim(); if(!sr){ document.getElementById('resultArea').innerHTML='<div class="muted">Enter SR</div>'; return; }
+  try{
+    const data=await fetchJson(`/api/familyBySr?sr=${encodeURIComponent(sr)}`);
+    if(!data.found){ document.getElementById('resultArea').innerHTML='<div class="muted">No family found</div>'; return; }
+    const f=data.family;
+    const header=`<h2>${escapeHtml(f.family_sr_no)} — ${escapeHtml(f.head_of_family)}</h2><div class="muted">${escapeHtml(f.community_name||'')} · Zone ${escapeHtml(f.zone_no??'')}</div><div>${escapeHtml(f.address||'')}</div>`;
+    document.getElementById('resultArea').innerHTML = header + renderFamilyMembers(data.members || []);
+  }catch(err){ document.getElementById('resultArea').innerHTML=`<div class="error">Failed: ${escapeHtml(err.message)}</div>`; }
+});
+
+document.getElementById('btnHead').addEventListener('click', async ()=>{
+  const q=document.getElementById('headInput').value.trim(); if(!q){ document.getElementById('resultArea').innerHTML='<div class="muted">Enter head name</div>'; return; }
+  try{ const data=await fetchJson(`/api/familiesByHead?q=${encodeURIComponent(q)}`); document.getElementById('resultArea').innerHTML=`<h2>Families matching "${escapeHtml(q)}"</h2>`+renderDynamicTable(data.results||[]); }
+  catch(err){ document.getElementById('resultArea').innerHTML=`<div class="error">Failed: ${escapeHtml(err.message)}</div>`; }
+});
+
+document.getElementById('btnMember').addEventListener('click', async ()=>{
+  const q=document.getElementById('memberInput').value.trim(); if(!q){ document.getElementById('resultArea').innerHTML='<div class="muted">Enter member name</div>'; return; }
+  try{ const data=await fetchJson(`/api/memberByName?q=${encodeURIComponent(q)}`); document.getElementById('resultArea').innerHTML=`<h2>Members matching "${escapeHtml(q)}"</h2>`+renderDynamicTable(data.results||[], ['baptism','communion','confirmation','marriage','employed']); }
+  catch(err){ document.getElementById('resultArea').innerHTML=`<div class="error">Failed: ${escapeHtml(err.message)}</div>`; }
+});
+
+document.getElementById('btnAllFamilies').addEventListener('click', async ()=>{
+  try{ const data=await fetchJson('/api/allFamilies'); document.getElementById('resultArea').innerHTML=`<h2>All Families (${(data.results||[]).length})</h2>`+renderDynamicTable(data.results||[]); }
+  catch(err){ document.getElementById('resultArea').innerHTML=`<div class="error">Failed: ${escapeHtml(err.message)}</div>`; }
+});
+
+document.getElementById('btnAllMembers').addEventListener('click', async ()=>{
+  try{ const data=await fetchJson('/api/allMembers'); document.getElementById('resultArea').innerHTML=`<h2>All Members (${(data.results||[]).length})</h2>`+renderDynamicTable(data.results||[], ['baptism','communion','confirmation','marriage','employed']); }
+  catch(err){ document.getElementById('resultArea').innerHTML=`<div class="error">Failed: ${escapeHtml(err.message)}</div>`; }
+});
+</script>
+</body>
+</html>
