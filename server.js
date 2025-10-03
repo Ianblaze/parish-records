@@ -106,7 +106,9 @@ initDb();
 
 // --------------------- Static files ---------------------
 const PUBLIC_DIR = path.join(__dirname, 'public');
-app.use(express.static(PUBLIC_DIR));
+// serve static files but do NOT auto-serve index.html for GET /
+app.use(express.static(PUBLIC_DIR, { index: false }));
+
 
 // --------------------- Simple auth routes ---------------------
 /**
