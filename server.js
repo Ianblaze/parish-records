@@ -109,7 +109,6 @@ const PUBLIC_DIR = path.join(__dirname, 'public');
 // serve static files but do NOT auto-serve index.html for GET /
 app.use(express.static(PUBLIC_DIR, { index: false }));
 
-
 // --------------------- Simple auth routes ---------------------
 /**
  * Simple login endpoint (POST /login)
@@ -137,6 +136,25 @@ app.post('/login', (req, res) => {
     return res.status(401).json({ success: false, message: 'Invalid credentials' });
   } catch (e) {
     console.error('POST /login error', e);
+    return res.status(500).json({ success: false, message: 'server error' });
+  }
+});
+
+// NEW: API login route expected by some frontends (POST /api/login)
+// This mirrors /login but returns a small JSON payload and sets session.
+app.post('/api/login', (req, res) => {
+  try {
+    const { username, password } = req.body || {};
+    if (!username || !password) {
+      return res.status(400).json({ success: false, message: 'Missing username or password' });
+    }
+    if (username === 'admin' && password === 'ian.rdr4') {
+      req.session.user = { name: username };
+      return res.json({ success: true, redirect: '/dashboard' });
+    }
+    return res.status(401).json({ success: false, message: 'Invalid credentials' });
+  } catch (err) {
+    console.error('POST /api/login error', err);
     return res.status(500).json({ success: false, message: 'server error' });
   }
 });

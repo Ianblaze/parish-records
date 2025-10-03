@@ -660,37 +660,32 @@
   }
 })();
 
-async function demoSubmit(){
-  const btn = document.getElementById('loginBtn');
-  btn.disabled = true;
-  const oldLabel = btn.textContent;
-  btn.textContent = 'Signing in…';
-
-  const payload = {
-    username: document.getElementById('username').value.trim(),
-    password: document.getElementById('password').value
-  };
+async function demoSubmit() {
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value.trim();
 
   try {
-    const r = await fetch('/api/login', {
+    const res = await fetch('/api/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      credentials: 'same-origin'
+      body: JSON.stringify({ username, password })
     });
-    const data = await r.json();
-    if (r.ok && data.ok) {
-      btn.textContent = 'Welcome';
-      setTimeout(()=> window.location.href = data.redirect || '/', 250);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      alert(err.message || "Login failed");
+      return;
+    }
+
+    const data = await res.json();
+    if (data.success) {
+      // redirect to index.html (dashboard)
+      window.location.href = "/index.html";
     } else {
-      btn.disabled = false;
-      btn.textContent = oldLabel;
-      alert(data.error || 'Login failed');
+      alert("Invalid username or password");
     }
   } catch (err) {
-    btn.disabled = false;
-    btn.textContent = oldLabel;
-    alert('Network error');
+    alert("API error: " + err.message);
   }
 }
 
