@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Login — Lively BG (slowed hue + padding 10)</title>
+<style>
+  :root{
+    --width:420px;
+    --accent-1: rgba(68,179,255,1);
+    --accent-2: rgba(0,136,255,1);
+    --focus-glow: rgba(68,179,255,0.18);
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial;color:#fff; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;}
+
+  /* page */
+  body{
+    min-height:100vh;
+    display:grid;
+    place-items:center;
+    padding:10px; /* changed to 10px as requested */
+    position: relative;
+    background: url('assets/bg.png') no-repeat center center fixed;
+    background-size: cover;
+    overflow: hidden;
+  }
+
+  /* canvas overlay for lively shapes */
+  #bgCanvas{
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+    mix-blend-mode: screen;
+    opacity: 0.95;
+    filter: blur(6px) saturate(120%);
+  }
+
+  /* content stacked above canvas */
+  .wrap{width:100%;max-width:1200px;display:flex;justify-content:center; position:relative; z-index: 1;}
+  .panel{width:var(--width);position:relative;padding-top:96px;filter:drop-shadow(0 8px 40px rgba(0,0,0,0.45));}
+
+  body::before{ display:none; }
+  body::after{
+    content:'';position:fixed;inset:0;pointer-events:none;
+    background:
+      radial-gradient(circle at 50% 0%, rgba(255,255,255,0.08), transparent 40%),
+      radial-gradient(circle at 50% 100%, rgba(0,0,0,0.15), transparent 40%);
+    mix-blend-mode:overlay;
+    z-index: 0;
+  }
+
+  /* avatar */
+  .avatar{
+    position:absolute;left:50%;transform:translateX(-50%);top:-86px;
+    width:150px;height:150px;border-radius:999px;
+    display:grid;place-items:center;overflow:hidden;border:6px solid rgba(255,255,255,0.06);
+    background:linear-gradient(145deg, rgba(255,255,255,0.03), rgba(0,0,0,0.06));
+    box-shadow:0 14px 40px rgba(0,0,0,0.6), inset 0 2px 6px rgba(255,255,255,0.02);
+    cursor:zoom-in;
+  }
+  .avatar img{
+    width:130px;height:130px;border-radius:999px;object-fit:cover;display:block;
+    transition: transform .32s cubic-bezier(.2,.9,.2,1), box-shadow .32s;
+  }
+  .avatar:hover img{ transform: scale(1.10); box-shadow: 0 28px 60px rgba(0,0,0,0.55) }
+
+  .avatar::after{
+    content:'';position:absolute;inset:0;
+    background: linear-gradient(120deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01), transparent);
+    transform: translateX(-140%); mix-blend-mode:overlay; animation:sheen 4s linear infinite;
+  }
+  @keyframes sheen{0%{transform:translateX(-140%)}100%{transform:translateX(180%)}}
+
+  .heading{ text-align:center; margin:6px 0 22px; font-size:18px; letter-spacing:1px; color:rgba(255,255,255,0.96); font-weight:600 }
+
+  /* form */
+  form{ display:flex; flex-direction:column; gap:10px; }
+
+  .group{
+    position:relative;
+    display:flex;
+    align-items:center;
+    background: rgba(255,255,255,0.07);
+    border:1px solid rgba(255,255,255,0.06);
+    border-radius:10px;
+    overflow:hidden;
+    transition: box-shadow .18s ease, transform .18s ease, border-color .18s ease;
+    height:56px;
+  }
+
+  .group::after{
+    content:''; position:absolute; left:12px; right:12px; bottom:-8px; height:6px; border-radius:6px;
+    background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+    transform: scaleX(0); transform-origin:left; opacity:0;
+    transition: transform .28s cubic-bezier(.2,.9,.2,1), opacity .28s;
+  }
+  .group:focus-within{
+    transform: translateY(-3px);
+    border-color: rgba(68,179,255,0.38);
+    box-shadow:
+      0 22px 56px rgba(6,10,20,0.5),
+      0 0 36px var(--focus-glow);
+  }
+  .group:focus-within::after{ transform: scaleX(1); opacity:1; }
+
+  .icon-box{ min-width:64px; height:56px; display:flex; align-items:center; justify-content:center; border-right:1px solid rgba(255,255,255,0.03); background:transparent }
+  .icon-box svg{ width:20px; height:20px; color:rgba(255,255,255,0.95) }
+
+  .control{ flex:1; padding:14px; color:#f8f8f8; font-size:15px; border:0; background:transparent; outline:none; caret-color:var(--accent-1); }
+  .control::placeholder{ color: rgba(255,255,255,0.72) }
+
+  .toggle-wrap{ width:64px; height:56px; display:flex; align-items:center; justify-content:center; border-left:1px solid rgba(255,255,255,0.03) }
+  .pw-btn{ width:36px; height:36px; border-radius:8px; border:0; background:transparent; color:rgba(255,255,255,0.88); cursor:pointer }
+  .pw-btn:hover{ background: rgba(255,255,255,0.03) }
+
+  .row{ display:flex; justify-content:space-between; align-items:center; margin-top:6px; font-size:13px; color:rgba(255,255,255,0.9) }
+  .row a{ color:rgba(255,255,255,0.92); text-decoration:none }
+
+  .login-btn{
+    margin-top:10px; padding:14px; border-radius:10px; border:1px solid rgba(255,255,255,0.06); font-weight:700; text-transform:uppercase; letter-spacing:1px; cursor:pointer;
+    background: rgba(255,255,255,0.07);
+    color:#fff; box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+    transition: transform .18s, box-shadow .18s, background .18s;
+  }
+  .login-btn:hover{ transform:translateY(-6px); box-shadow:0 26px 64px rgba(0,0,0,0.55); background: rgba(255,255,255,0.10); }
+
+  .note{ text-align:center; margin-top:12px; font-size:13px; color:rgba(255,255,255,0.85) }
+
+  /* lightbox */
+  .lightbox{
+    position:fixed;
+    inset:0;
+    display:none;
+    align-items:flex-start;
+    justify-content:center;
+    background:transparent;
+    z-index:9999;
+    padding:20px;
+    padding-top:10px;
+  }
+  .lightbox.show{ display:flex; }
+
+  .lightbox-content{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:25px;
+    max-width:90vw;
+    max-height:90vh;
+    position:relative;
+  }
+
+  .lightbox-content img{
+    max-width:100%;
+    max-height:60vh;
+    border-radius:10px;
+    object-fit:contain;
+    display:block;
+    box-shadow:0 10px 30px rgba(0,0,0,0.55);
+    background:#000;
+  }
+
+  .lightbox-caption{
+    color:#fff;
+    font-size:14px;
+    text-align:center;
+  }
+
+  .lightbox-close{
+    position:absolute;
+    right:12px;
+    top:12px;
+    background: rgba(255,255,255,0.08);
+    border:0;
+    color:#fff;
+    padding:6px 10px;
+    border-radius:8px;
+    cursor:pointer;
+    font-weight:700;
+    z-index:5;
+  }
+
+  @media (max-width:480px){
+    .panel{ width:340px }
+    .avatar{ width:120px; height:120px; top:-66px }
+    .avatar img{ width:100px; height:100px }
+    .icon-box{ min-width:48px }
+    .toggle-wrap{ width:48px }
+    .lightbox-content{ max-width:94vw }
+    .lightbox-content img{ max-height:50vh }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ transition:none !important; animation:none !important; }
+    #bgCanvas{ display:none !important; }
+  }
+</style>
+</head>
+<body>
+  <canvas id="bgCanvas" aria-hidden="true"></canvas>
+
+  <div class="wrap">
+    <div class="panel">
+      <div class="avatar" id="avatarBtn" role="button" tabindex="0" aria-label="Open full logo view">
+        <img id="avatarImg" src="assets/logo.jpg" alt="logo">
+      </div>
+
+      <div class="heading">Admin</div>
+
+      <form id="loginForm" onsubmit="event.preventDefault();demoSubmit()">
+        <div class="group" aria-label="Username group">
+          <div class="icon-box" aria-hidden="true">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path d="M12 12c2.761 0 5-2.239 5-5s-2.239-5-5-5-5 2.239-5 5 2.239 5 5 5zM12 14c-4.418 0-8 2.239-8 5v1h16v-1c0-2.761-3.582-5-8-5z"/></svg>
+          </div>
+          <input class="control" id="username" name="username" type="text" placeholder="Username" autocomplete="username" required aria-label="Username">
+        </div>
+
+        <div class="group" aria-label="Password group">
+          <div class="icon-box" aria-hidden="true">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none"><rect x="3" y="11" width="18" height="10" rx="2" stroke="currentColor" stroke-width="1.3"/><path d="M7 11V8a5 5 0 0 1 10 0v3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+
+          <input class="control" id="password" name="password" type="password" placeholder="Password" autocomplete="current-password" required aria-label="Password">
+
+          <div class="toggle-wrap" aria-hidden="true">
+            <button type="button" id="pwToggle" class="pw-btn" aria-label="Show password" title="Show/Hide password">
+              <svg id="eyeOpen" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z" stroke="currentColor" stroke-width="1.2"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.2"/></svg>
+              <svg id="eyeClosed" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:none"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-6 0-10-7-10-7a19.6 19.6 0 0 1 4.22-5.16" stroke="currentColor" stroke-width="1.2"/><path d="M1 1l22 22" stroke="currentColor" stroke-width="1.2"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:4px;">
+          <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" name="remember" aria-label="Remember me"> Remember me</label>
+          <a href="#" aria-label="Forgot password">Forgot Password?</a>
+        </div>
+
+        <button class="login-btn" type="submit" id="loginBtn" aria-label="Login">Login</button>
+
+        <div class="note">By signing in you agree to our <a href="#" style="color:rgba(255,255,255,0.95)">Terms</a></div>
+      </form>
+
+      <div id="lightbox" class="lightbox" role="dialog" aria-modal="true" aria-hidden="true">
+        <div class="lightbox-content" role="document">
+          <button class="lightbox-close" id="lbClose" aria-label="Close full image">✕</button>
+          <img id="lbImage" src="" alt="Full logo">
+          <div class="lightbox-caption">1, L. Jagmohandas Marg, Cumballa Hill, Mumbai 400036</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* ------------------------------
+  lively canvas: tuned for closer-edge bounce + dynamic sharp hue oscillation (slowed)
+-------------------------------*/
+(function(){
+  const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (prefersReduced) return;
+
+  const canvas = document.getElementById('bgCanvas');
+  const ctx = canvas.getContext('2d');
+  let W = canvas.width = innerWidth;
+  let H = canvas.height = innerHeight;
+  let mouseX = W/2, mouseY = H/2;
+  let mouseActive = false;
+
+  const BOKEH_COUNT = Math.max(14, Math.round((W*H) / 110000));
+  const SHAPE_COUNT = Math.max(10, Math.round((W*H) / 260000));
+  const CLEAR_FREQ = 0.35;
+  const SHARP_COUNT = Math.max(3, Math.round((W*H) / 700000));
+
+  const bokehs = [];
+  const shapes = [];
+  const clearShapes = [];
+  const sharpLayer = [];
+
+  const rand = (a,b) => a + Math.random()*(b-a);
+
+  function makeBokehs(){
+    bokehs.length = 0;
+    for (let i=0;i<BOKEH_COUNT;i++){
+      const size = rand(24, 110) * (Math.min(W,H)/900);
+      bokehs.push({
+        x: rand(0,W),
+        y: rand(H*0.1, H*1.2),
+        vx: rand(-0.03,0.03),
+        vy: rand(-0.06, -0.24) * (Math.min(W,H)/900 + 0.7),
+        r: size,
+        alpha: rand(0.06,0.22),
+        phase: rand(0, Math.PI*2),
+        drift: rand(-0.3,0.3)
+      });
+    }
+  }
+
+  function makeShapes(){
+    shapes.length = 0;
+    clearShapes.length = 0;
+    for (let i=0;i<SHAPE_COUNT;i++){
+      const isRect = Math.random() > 0.5;
+      const baseSize = rand(26, 86) * (Math.min(W,H)/1000 + 0.6);
+      const shape = {
+        x: rand(-40, W+40),
+        y: rand(H*0.15, H*1.15),
+        vx: rand(-0.05, 0.05),
+        vy: rand(-0.03, -0.12),
+        w: baseSize * rand(0.8,1.4),
+        h: baseSize * rand(0.6,1.1),
+        r: isRect ? rand(6,16) : baseSize * 0.5,
+        alpha: rand(0.06,0.24),
+        angle: rand(0, Math.PI*2),
+        rotSpeed: rand(-0.007, 0.007),
+        kind: isRect ? 'rect' : 'circle',
+        hue: rand(190,250),
+        hueSpeed: rand(-0.06, 0.28)
+      };
+      shapes.push(shape);
+      if (Math.random() < CLEAR_FREQ) {
+        clearShapes.push({
+          ...shape,
+          alpha: Math.min(0.8, shape.alpha * rand(1.4,2.0)),
+          clarity: rand(0.75, 0.98)
+        });
+      }
+    }
+  }
+
+  function makeSharpLayer(){
+    sharpLayer.length = 0;
+    for (let i=0;i<SHARP_COUNT;i++){
+      const isRect = Math.random() > 0.5;
+      const big = rand(48, 140) * (Math.min(W,H)/900 + 0.6);
+      // add huePhase and low/high range to smoothly oscillate warm <-> cool
+      const lowHue = rand(28, 50);   // warm (approx. orange)
+      const highHue = rand(210, 230); // cooler (bluish)
+      sharpLayer.push({
+        x: rand(40, Math.max(80, W-40)),
+        y: rand(H*0.25, Math.max(H*0.5, H*0.9)),
+        vx: rand(-0.02, 0.02),
+        vy: rand(-0.02, -0.06),
+        w: isRect ? big*rand(0.6,1.2) : big,
+        h: isRect ? big*rand(0.4,1.0) : big,
+        r: isRect ? rand(8,18) : big*0.5,
+        alpha: rand(0.24,0.56),
+        angle: rand(0, Math.PI*2),
+        rotSpeed: rand(-0.004, 0.004),
+        kind: isRect ? 'rect' : 'circle',
+        huePhase: rand(0, Math.PI*2),
+        hueLow: lowHue,
+        hueHigh: highHue,
+        hueSpeed: rand(0.002, 0.007) // **slowed** smooth oscillation (changed)
+      });
+    }
+  }
+
+  function init(){
+    makeBokehs();
+    makeShapes();
+    makeSharpLayer();
+  }
+
+  function onResize(){
+    W = canvas.width = innerWidth;
+    H = canvas.height = innerHeight;
+    init();
+  }
+  window.addEventListener('resize', onResize);
+
+  window.addEventListener('mousemove', (e)=>{
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+    mouseActive = true;
+    clearTimeout(window._mouseIdleTO);
+    window._mouseIdleTO = setTimeout(()=>{ mouseActive = false; }, 900);
+  });
+  window.addEventListener('mouseleave', ()=> mouseActive = false);
+
+  // interaction params
+  const INTERACTION_RADIUS = 90;
+  const REPEL_STRENGTH = 0.28;
+  const REPEL_STRENGTH_SHARP = 1.1; // stronger repulsion
+  const MAX_SPEED = 1.2;
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+
+    // BOKEHS
+    for (let p of bokehs){
+      p.x += p.vx + (mouseX - W/2) * (p.drift*0.00006);
+      p.y += p.vy;
+      if (p.y + p.r < -60) {
+        p.y = H + rand(10,120);
+        p.x = rand(-60, W+60);
+      }
+      p.phase += 0.002 + Math.abs(p.vy)*0.0009;
+      const a = p.alpha * (0.7 + 0.3*Math.sin(p.phase));
+      const g = ctx.createRadialGradient(p.x, p.y, Math.max(1,p.r*0.06), p.x, p.y, p.r);
+      g.addColorStop(0, `rgba(255,255,255,${a*0.9})`);
+      g.addColorStop(0.5, `rgba(220,240,255,${a*0.45})`);
+      g.addColorStop(1, `rgba(150,190,230,${a*0.03})`);
+      ctx.globalCompositeOperation = 'screen';
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+      ctx.fill();
+      ctx.closePath();
+      ctx.globalCompositeOperation = 'source-over';
+    }
+
+    // SOFT SHAPES
+    for (let s of shapes){
+      if (mouseActive){
+        const dx = s.x - mouseX;
+        const dy = s.y - mouseY;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        if (dist < INTERACTION_RADIUS && dist > 1){
+          const nx = dx/dist;
+          const ny = dy/dist;
+          const jitter = (Math.random()*0.6 - 0.3);
+          s.vx += (nx * REPEL_STRENGTH*0.6) + jitter*0.02;
+          s.vy += (ny * REPEL_STRENGTH*0.6) + jitter*0.02;
+        }
+      }
+      s.x += s.vx + (mouseX - W/2) * (s.vx*0.002);
+      s.y += s.vy;
+      s.angle += s.rotSpeed;
+      s.hue += s.hueSpeed;
+      s.vx = Math.max(-MAX_SPEED, Math.min(MAX_SPEED, s.vx));
+      s.vy = Math.max(-MAX_SPEED, Math.min(MAX_SPEED, s.vy));
+      if (s.y + Math.max(s.h, s.r) < -80) {
+        s.y = H + rand(10,100);
+        s.x = rand(-60, W+60);
+      }
+      if (s.x < -160) s.x = W + rand(40,120);
+      if (s.x > W + 160) s.x = -rand(40,120);
+
+      const hue = (s.hue % 360 + 360) % 360;
+      const alpha = s.alpha * (0.7 + 0.3*Math.sin(s.angle*0.7));
+      const fill = `hsla(${hue}, 72%, 54%, ${alpha*0.7})`;
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      ctx.translate(s.x, s.y);
+      if (s.kind === 'rect'){
+        ctx.rotate(s.angle);
+        const w = s.w, h = s.h, r = Math.min(20, Math.round(s.w*0.08));
+        const g = ctx.createLinearGradient(-w/2, -h/2, w/2, h/2);
+        g.addColorStop(0, fill);
+        g.addColorStop(1, `hsla(${(hue+30)%360}, 70%, 48%, ${alpha*0.45})`);
+        ctx.fillStyle = g;
+        roundRect(ctx, -w/2, -h/2, w, h, r);
+        ctx.fill();
+      } else {
+        const g = ctx.createRadialGradient(0,0,s.r*0.12,0,0,s.r);
+        g.addColorStop(0, fill);
+        g.addColorStop(0.6, `hsla(${(hue+20)%360},70%,50%,${alpha*0.4})`);
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(0,0,s.r,0,Math.PI*2);
+        ctx.fill();
+        ctx.closePath();
+      }
+      ctx.restore();
+      ctx.globalCompositeOperation = 'source-over';
+    }
+
+    // CLEAR SHAPES (more defined)
+    for (let c of clearShapes){
+      if (mouseActive){
+        const dx = c.x - mouseX;
+        const dy = c.y - mouseY;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        if (dist < INTERACTION_RADIUS && dist > 1){
+          const nx = dx/dist;
+          const ny = dy/dist;
+          c.vx += (nx * REPEL_STRENGTH*0.75) + (Math.random()*0.04 - 0.02);
+          c.vy += (ny * REPEL_STRENGTH*0.75) + (Math.random()*0.04 - 0.02);
+        }
+      }
+      c.x += c.vx;
+      c.y += c.vy;
+      c.angle += c.rotSpeed * 0.9;
+      c.hue += c.hueSpeed * 0.6;
+      if (c.y + Math.max(c.h, c.r) < -80) { c.y = H + rand(10,100); c.x = rand(-60, W+60); }
+      c.vx = Math.max(-MAX_SPEED, Math.min(MAX_SPEED, c.vx));
+      c.vy = Math.max(-MAX_SPEED, Math.min(MAX_SPEED, c.vy));
+
+      const hue = (c.hue % 360 + 360) % 360;
+      const alpha = Math.min(0.95, c.alpha * (0.9 + 0.25*Math.sin(c.angle)));
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      ctx.translate(c.x, c.y);
+
+      if (c.kind === 'rect'){
+        ctx.rotate(c.angle);
+        const w = c.w, h = c.h, r = Math.min(14, Math.round(c.w*0.06));
+        ctx.fillStyle = `hsla(${hue},65%,54%,${alpha})`;
+        roundRect(ctx, -w/2, -h/2, w, h, r);
+        ctx.fill();
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = `hsla(${hue},90%,88%,${Math.min(0.18, alpha*0.15)})`;
+        ctx.stroke();
+      } else {
+        ctx.beginPath();
+        ctx.fillStyle = `hsla(${hue},68%,56%,${alpha})`;
+        ctx.arc(0,0,c.r,0,Math.PI*2);
+        ctx.fill();
+        ctx.closePath();
+      }
+      ctx.restore();
+      ctx.globalCompositeOperation = 'source-over';
+    }
+
+    // SHARP LAYER (rarer, crisper) — stronger repulsion + bounce on edges (closer-to-edge bounce)
+    for (let s of sharpLayer){
+      if (mouseActive){
+        const dx = s.x - mouseX;
+        const dy = s.y - mouseY;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        if (dist < INTERACTION_RADIUS*1.2 && dist > 1){
+          const nx = dx/dist;
+          const ny = dy/dist;
+          // stronger repulsion with bit randomness
+          s.vx += (nx * REPEL_STRENGTH_SHARP) + (Math.random()*0.08 - 0.04);
+          s.vy += (ny * REPEL_STRENGTH_SHARP) + (Math.random()*0.08 - 0.04);
+        }
+      }
+
+      s.x += s.vx;
+      s.y += s.vy;
+      s.angle += s.rotSpeed;
+      s.huePhase += s.hueSpeed;
+
+      // clamp velocities
+      s.vx = Math.max(-MAX_SPEED*1.6, Math.min(MAX_SPEED*1.6, s.vx));
+      s.vy = Math.max(-MAX_SPEED*1.6, Math.min(MAX_SPEED*1.6, s.vy));
+
+      // bounce logic: allow bounce very close to viewport edges (small margin)
+      const marginX = Math.max(2, (s.w || s.r) * 0.12); // much smaller margin so shapes go closer to real border
+      const marginY = Math.max(2, (s.h || s.r) * 0.12);
+      let bounced = false;
+
+      if (s.x - marginX < 0) {
+        s.x = marginX;
+        s.vx = Math.abs(s.vx) * 0.66;
+        bounced = true;
+      } else if (s.x + marginX > W) {
+        s.x = W - marginX;
+        s.vx = -Math.abs(s.vx) * 0.66;
+        bounced = true;
+      }
+
+      if (s.y - marginY < 0) {
+        s.y = marginY;
+        s.vy = Math.abs(s.vy) * 0.66;
+        bounced = true;
+      } else if (s.y + marginY > H) {
+        s.y = H - marginY;
+        s.vy = -Math.abs(s.vy) * 0.66;
+        bounced = true;
+      }
+
+      if (bounced){
+        s.vx *= 0.96;
+        s.vy *= 0.96;
+      }
+
+      // compute dynamic hue that oscillates between hueLow and hueHigh (warm <-> cool)
+      const t = (Math.sin(s.huePhase) + 1) / 2; // 0..1
+      const hue = s.hueLow * (1 - t) + s.hueHigh * t;
+      const alpha = s.alpha;
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      ctx.translate(s.x, s.y);
+
+      if (s.kind === 'rect'){
+        ctx.rotate(s.angle);
+        const w = s.w, h = s.h, r = Math.min(18, Math.round(s.w*0.06));
+        ctx.fillStyle = `hsla(${hue},75%,52%,${alpha})`;
+        roundRect(ctx, -w/2, -h/2, w, h, r);
+        ctx.fill();
+        ctx.lineWidth = 1.2;
+        ctx.strokeStyle = `rgba(255,255,255,${Math.min(0.16, alpha*0.12)})`;
+        ctx.stroke();
+      } else {
+        ctx.beginPath();
+        ctx.fillStyle = `hsla(${hue},72%,54%,${alpha})`;
+        ctx.arc(0,0,s.r,0,Math.PI*2);
+        ctx.fill();
+        ctx.closePath();
+      }
+      ctx.restore();
+      ctx.globalCompositeOperation = 'source-over';
+    }
+  }
+
+  function roundRect(ctx, x, y, w, h, r){
+    const min = Math.min(w, h) / 2;
+    if (r > min) r = min;
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  let raf;
+  function loop(){
+    draw();
+    raf = requestAnimationFrame(loop);
+  }
+
+  init();
+  loop();
+
+  document.addEventListener('visibilitychange', ()=>{
+    if (document.hidden) cancelAnimationFrame(raf);
+    else loop();
+  });
+  window.addEventListener('beforeunload', ()=> cancelAnimationFrame(raf));
+})();
+
+/* ------------------------------
+  rest of page scripts (unchanged)
+-------------------------------*/
+
+// password toggle with aria updates
+(function(){
+  const pw = document.getElementById('password');
+  const toggle = document.getElementById('pwToggle');
+  const eyeOpen = document.getElementById('eyeOpen');
+  const eyeClosed = document.getElementById('eyeClosed');
+
+  if (toggle) {
+    toggle.addEventListener('click', () => {
+      if (pw.type === 'password') {
+        pw.type = 'text';
+        toggle.setAttribute('aria-label', 'Hide password');
+        eyeOpen.style.display = 'none';
+        eyeClosed.style.display = 'block';
+      } else {
+        pw.type = 'password';
+        toggle.setAttribute('aria-label', 'Show password');
+        eyeOpen.style.display = 'block';
+        eyeClosed.style.display = 'none';
+      }
+      pw.focus();
+    });
+  }
+})();
+
+async function demoSubmit(){
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true;
+  const oldLabel = btn.textContent;
+  btn.textContent = 'Signing in…';
+
+  const payload = {
+    username: document.getElementById('username').value.trim(),
+    password: document.getElementById('password').value
+  };
+
+  try {
+    const r = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      credentials: 'same-origin'
+    });
+    const data = await r.json();
+    if (r.ok && data.ok) {
+      btn.textContent = 'Welcome';
+      setTimeout(()=> window.location.href = data.redirect || '/', 250);
+    } else {
+      btn.disabled = false;
+      btn.textContent = oldLabel;
+      alert(data.error || 'Login failed');
+    }
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = oldLabel;
+    alert('Network error');
+  }
+}
+
+
+// Lightbox (clean image + frosted caption)
+(function(){
+  const avatar = document.getElementById('avatarBtn');
+  const img = document.getElementById('avatarImg');
+  const lightbox = document.getElementById('lightbox');
+  const lbImage = document.getElementById('lbImage');
+  const lbClose = document.getElementById('lbClose');
+
+  function openLightbox() {
+    const src = img.src;
+    const pre = new Image();
+    pre.onload = function(){
+      lbImage.src = src;
+      lightbox.classList.add('show');
+      lightbox.setAttribute('aria-hidden','false');
+      lbClose.focus();
+      document.addEventListener('focus', trapFocus, true);
+    };
+    pre.onerror = function(){
+      lbImage.src = src;
+      lightbox.classList.add('show');
+      lightbox.setAttribute('aria-hidden','false');
+      lbClose.focus();
+    };
+    pre.src = src;
+  }
+
+  function closeLightbox() {
+    lightbox.classList.remove('show');
+    lightbox.setAttribute('aria-hidden','true');
+    lbImage.src = '';
+    avatar.focus();
+    document.removeEventListener('focus', trapFocus, true);
+  }
+
+  function trapFocus(e){
+    if (!lightbox.contains(e.target)){
+      e.stopPropagation();
+      lbClose.focus();
+    }
+  }
+
+  avatar.addEventListener('click', openLightbox);
+  avatar.addEventListener('keydown', (e)=>{ if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openLightbox(); } });
+
+  lbClose.addEventListener('click', closeLightbox);
+  lightbox.addEventListener('click', (e)=>{ if (e.target === lightbox) closeLightbox(); });
+
+  document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape' && lightbox.classList.contains('show')) closeLightbox(); });
+})();
+
+</script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+

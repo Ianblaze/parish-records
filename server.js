@@ -1,12 +1,11 @@
-// server.js (diagnostic + safe API ordering)
+// server.js (with session-based auth protecting /api/* endpoints)
 // Replace DB_CONFIG credentials with your MySQL values, save, then `node server.js`.
 
 const express = require('express');
 const mysql = require('mysql2/promise');
 const cors = require('cors');
 const path = require('path');
-
-
+const session = require('express-session');
 
 const app = express();
 
@@ -28,8 +27,12 @@ app.use((req, res, next) => {
   return res.status(401).send('Auth required');
 });
 
-app.use(cors());
+app.use(cors({
+  origin: true,
+  credentials: true
+}));
 app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 
 // server.js — DB config (use env vars)
 const DB_CONFIG = {
@@ -42,13 +45,32 @@ const DB_CONFIG = {
   connectionLimit: 10,
   queueLimit: 0
 };
+console.log('DB_CONFIG in use:', {
+  host: DB_CONFIG.host,
+  user: DB_CONFIG.user,
+  database: DB_CONFIG.database,
+  port: DB_CONFIG.port,
+  passwordSet: !!DB_CONFIG.password
+});
+
 
 const PORT = process.env.PORT || 3000;
 
-
+// session configuration (in-memory store — replace with Redis/DB in production)
+app.use(session({
+  name: 'sid',
+  secret: process.env.SESSION_SECRET || 'dev-session-secret-change-me',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    secure: (process.env.NODE_ENV === 'production'), // set true under HTTPS
+    sameSite: 'lax',
+    maxAge: 1000 * 60 * 60 * 6 // 6 hours
+  }
+}));
 
 // ---------------------------------------------
-
 let pool = null;
 
 // initialize DB pool but do NOT crash the server permanently if DB fails.
@@ -68,8 +90,64 @@ initDb();
 // --- Quick health check endpoint (JSON) ---
 app.get('/ping', (req, res) => res.json({ ok: true, ts: Date.now() }));
 
-// --- API endpoints (must be defined before static fallback) ---
+/*
+  PUBLIC UNPROTECTED API: /api/login and /api/logout
+  - /api/login: accepts { username, password } JSON — checks only admin/ian.rdr4
+  - on success it sets req.session.user and returns { ok:true, redirect: '/' }
+*/
+app.post('/api/login', (req, res) => {
+  const { username, password } = req.body || {};
+  if (!username || !password) return res.status(400).json({ ok:false, error: 'Missing username or password' });
 
+  // TEMPORARY: single hardcoded credential (admin / ian.rdr4)
+  if (username === 'admin' && password === 'ian.rdr4') {
+    // set the session
+    req.session.user = { username: 'admin', role: 'admin' };
+    // send success + redirect to root (index.html)
+    return res.json({ ok: true, redirect: '/' });
+  }
+
+  // invalid credentials
+  return res.status(401).json({ ok:false, error: 'Invalid username or password' });
+});
+
+// logout (public)
+app.post('/api/logout', (req, res) => {
+  req.session.destroy(err => {
+    if (err) {
+      console.error('Session destroy error', err);
+      return res.status(500).json({ ok:false, error: 'Logout failed' });
+    }
+    res.clearCookie('sid');
+    return res.json({ ok:true });
+  });
+});
+
+// --- Auth middleware for protecting API endpoints ---
+function requireAuth(req, res, next) {
+  // Allow health check
+  if (req.path === '/ping') return next();
+  // Allow login/logout (they are defined before the middleware)
+  // Otherwise require a session user
+  if (req.session && req.session.user && req.session.user.username) {
+    return next();
+  }
+  // If request expects JSON, return 401 JSON
+  if (req.headers.accept && req.headers.accept.indexOf('application/json') !== -1) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+  // Otherwise redirect to login page
+  return res.redirect('/login.html');
+}
+
+// Apply requireAuth to all /api routes except login/logout which are already defined
+app.use('/api', (req, res, next) => {
+  // If path is /api/login or /api/logout, skip
+  if (req.path === '/login' || req.path === '/logout') return next();
+  return requireAuth(req, res, next);
+});
+
+// --- API endpoints (protected by requireAuth) ---
 // GET all families
 app.get('/api/allFamilies', async (req, res) => {
   if (!pool) return res.status(500).json({ error: 'DB not connected' });
@@ -165,13 +243,23 @@ app.get('/api/familiesByHead', async (req, res) => {
 // --- Serve static frontend files from public/ ---
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- SPA fallback (must be last) ---
+// Root route: if logged in serve index.html, otherwise redirect to login
+app.get('/', (req, res) => {
+  if (req.session && req.session.user && req.session.user.username) {
+    return res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  }
+  return res.redirect('/login.html');
+});
+
+// SPA fallback (must be last) — for non-API requests, serve index if authenticated, otherwise login.
 app.use((req, res) => {
-  // If request is for API path but reached here, return JSON 404 instead of HTML
   if (req.path.startsWith('/api/') || req.path.startsWith('/ping')) {
     return res.status(404).json({ error: 'API endpoint not found' });
   }
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  if (req.session && req.session.user && req.session.user.username) {
+    return res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  }
+  return res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
 // start server
