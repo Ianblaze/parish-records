@@ -12,6 +12,15 @@ const session = require('express-session');
 
 const app = express();
 
+// --- add this near the top, once at startup ---
+const DEPLOY_TS = process.env.DEPLOY_TS ? Number(process.env.DEPLOY_TS) : Date.now();
+console.log('DEPLOY_TS (server start):', new Date(DEPLOY_TS).toISOString());
+
+// simple endpoint that returns the static deploy/start timestamp
+app.get('/deploy-time', (req, res) => {
+  return res.json({ deployTs: DEPLOY_TS });
+});
+
 // Basic HTTP auth (optional) — kept from your original file
 const BASIC_USER = process.env.BASIC_USER;
 const BASIC_PASS = process.env.BASIC_PASS;

@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>St. Stephen's Parishoner DB (Option A: Collapsed Grid)</title>
+<title>St. Stephen's Parishoner DB</title>
 <style>
 /* --- FORCE GLOBAL THEME + RESET --- */
 :root {
@@ -168,44 +168,38 @@ footer{margin-top:16px;color:var(--muted);font-size:13px}
       <div id="resultArea" class="card" style="margin-top:12px"></div>
     </div>
 
-    <div class="muted-block" id="timestamp"></div>
+    <!-- HTML -->
+<div class="muted-block" id="timestamp"></div>
 <footer id="dbUpdate"></footer>
 
 <script>
-// ---------- Helper for readable time ----------
-function formatTime(ts) {
-  return new Date(ts).toLocaleString('en-IN', {
-    timeZone: 'Asia/Kolkata',
-    hour12: true,
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric'
-  });
-}
-
-// ---------- 1. Current local time (updates every 1 min) ----------
-function updateCurrentTime() {
-  document.getElementById('timestamp').innerText = `Time — ${formatTime(Date.now())}`;
-}
-updateCurrentTime();
-setInterval(updateCurrentTime, 60 * 1000); // every 1 minute
-
-// ---------- 2. Last updated DB time (via /ping every 5 min) ----------
-async function updateDbTimestamp() {
-  try {
-    const res = await fetch('/ping');
-    const data = await res.json();
-    document.getElementById('dbUpdate').innerText = `Last updated DB at ${formatTime(data.ts)}`;
-  } catch {
-    document.getElementById('dbUpdate').innerText = `Last updated DB: unavailable`;
+  // format helper (reuse your preferred locale/time format)
+  function formatTime(ts) {
+    if (!ts) return 'Unknown';
+    return new Date(ts).toLocaleString();
   }
-}
-updateDbTimestamp();
-setInterval(updateDbTimestamp, 5 * 60 * 1000); // every 5 minutes
+
+  // current local time (still updates every minute)
+  function updateCurrentTime() {
+    document.getElementById('timestamp').innerText = `Time — ${formatTime(Date.now())}`;
+  }
+  updateCurrentTime();
+  setInterval(updateCurrentTime, 60 * 1000);
+
+  // fetch deploy-time ONCE (static until server restarts)
+  (async function fetchDeployTimeOnce() {
+    try {
+      const r = await fetch('/deploy-time', { cache: 'no-store' });
+      if (!r.ok) throw new Error('deploy-time not available');
+      const data = await r.json();
+      document.getElementById('dbUpdate').innerText = `Last updated DB at ${formatTime(data.deployTs)}`;
+    } catch (err) {
+      document.getElementById('dbUpdate').innerText = 'Last updated DB: unavailable';
+      console.warn('fetchDeployTimeOnce error', err);
+    }
+  })();
 </script>
+
 
 
 <script>
