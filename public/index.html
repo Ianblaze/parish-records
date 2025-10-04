@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Church DB — Admin (Option A: Collapsed Grid)</title>
+<title>St. Stephen's Parishoner DB (Option A: Collapsed Grid)</title>
 <style>
 /* --- FORCE GLOBAL THEME + RESET --- */
 :root {
@@ -138,8 +138,8 @@ footer{margin-top:16px;color:var(--muted);font-size:13px}
   <div class="app" id="app">
     <header>
       <div>
-        <h1>Church DB — Admin</h1>
-        <div class="muted">Search, view families & members — Light/Dark theme</div>
+        <h1>St. Stephen's Parishoner DB — Admin </h1>
+        <div class="muted">Search and view families, members & zones</div>
       </div>
       <div class="controls">
         <label style="display:flex;align-items:center;gap:8px">
@@ -168,9 +168,45 @@ footer{margin-top:16px;color:var(--muted);font-size:13px}
       <div id="resultArea" class="card" style="margin-top:12px"></div>
     </div>
 
-    <div class="muted-block">Tip: horizontal scroll appears when table is wider than the view (drag or use scrollbar).</div>
-    <footer>Local admin UI — add authentication before exposing to a network.</footer>
-  </div>
+    <div class="muted-block" id="timestamp"></div>
+<footer id="dbUpdate"></footer>
+
+<script>
+// ---------- Helper for readable time ----------
+function formatTime(ts) {
+  return new Date(ts).toLocaleString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    hour12: true,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric'
+  });
+}
+
+// ---------- 1. Current local time (updates every 1 min) ----------
+function updateCurrentTime() {
+  document.getElementById('timestamp').innerText = `Time — ${formatTime(Date.now())}`;
+}
+updateCurrentTime();
+setInterval(updateCurrentTime, 60 * 1000); // every 1 minute
+
+// ---------- 2. Last updated DB time (via /ping every 5 min) ----------
+async function updateDbTimestamp() {
+  try {
+    const res = await fetch('/ping');
+    const data = await res.json();
+    document.getElementById('dbUpdate').innerText = `Last updated DB at ${formatTime(data.ts)}`;
+  } catch {
+    document.getElementById('dbUpdate').innerText = `Last updated DB: unavailable`;
+  }
+}
+updateDbTimestamp();
+setInterval(updateDbTimestamp, 5 * 60 * 1000); // every 5 minutes
+</script>
+
 
 <script>
 /* Theme initialisation */
