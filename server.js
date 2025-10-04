@@ -25,6 +25,23 @@ app.get('/deploy-time', (req, res) => {
 const BASIC_USER = process.env.BASIC_USER;
 const BASIC_PASS = process.env.BASIC_PASS;
 
+// Endpoint to return the server's last deployment timestamp (formatted)
+const deployedAt = new Date();
+
+app.get('/api/deployTime', (req, res) => {
+  const options = { 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric', 
+    hour: 'numeric', 
+    minute: '2-digit', 
+    hour12: true 
+  };
+  const formatted = deployedAt.toLocaleString('en-US', options);
+  res.json({ deployTime: formatted });
+});
+
+
 app.use((req, res, next) => {
   if (!BASIC_USER) return next(); // disabled unless env set
   const auth = req.headers.authorization;

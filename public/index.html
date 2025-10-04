@@ -179,7 +179,7 @@ footer{margin-top:16px;color:var(--muted);font-size:13px}
 function updateCurrentTime() {
   const now = new Date();
   const opts = { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true };
-  document.getElementById('timeNow').textContent = `Time ${now.toLocaleString('en-US', opts)}`;
+  document.getElementById('timeNow').textContent = `${now.toLocaleString('en-US', opts)}`;
 }
 updateCurrentTime();
 setInterval(updateCurrentTime, 60000);
