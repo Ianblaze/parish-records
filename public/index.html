@@ -169,36 +169,34 @@ footer{margin-top:16px;color:var(--muted);font-size:13px}
     </div>
 
     <!-- HTML -->
-<div class="muted-block" id="timestamp"></div>
-<footer id="dbUpdate"></footer>
+<footer>
+  <div id="timeNow">Loading current time...</div>
+  <div id="dbTime">Loading last DB update...</div>
+</footer>
 
 <script>
-  // format helper (reuse your preferred locale/time format)
-  function formatTime(ts) {
-    if (!ts) return 'Unknown';
-    return new Date(ts).toLocaleString();
-  }
+// live clock (updates every minute)
+function updateCurrentTime() {
+  const now = new Date();
+  const opts = { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true };
+  document.getElementById('timeNow').textContent = `Time ${now.toLocaleString('en-US', opts)}`;
+}
+updateCurrentTime();
+setInterval(updateCurrentTime, 60000);
 
-  // current local time (still updates every minute)
-  function updateCurrentTime() {
-    document.getElementById('timestamp').innerText = `Time — ${formatTime(Date.now())}`;
-  }
-  updateCurrentTime();
-  setInterval(updateCurrentTime, 60 * 1000);
-
-  // fetch deploy-time ONCE (static until server restarts)
-  (async function fetchDeployTimeOnce() {
-    try {
-      const r = await fetch('/deploy-time', { cache: 'no-store' });
-      if (!r.ok) throw new Error('deploy-time not available');
-      const data = await r.json();
-      document.getElementById('dbUpdate').innerText = `Last updated DB at ${formatTime(data.deployTs)}`;
-    } catch (err) {
-      document.getElementById('dbUpdate').innerText = 'Last updated DB: unavailable';
-      console.warn('fetchDeployTimeOnce error', err);
+// fetch deploy time once (static)
+fetch('/api/deployTime')
+  .then(r => r.json())
+  .then(d => {
+    if (d.deployTime) {
+      document.getElementById('dbTime').textContent = `Last updated DB at ${d.deployTime}`;
     }
-  })();
+  })
+  .catch(() => {
+    document.getElementById('dbTime').textContent = 'Last updated DB at unknown';
+  });
 </script>
+
 
 
 
