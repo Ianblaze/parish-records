@@ -663,31 +663,39 @@
 async function demoSubmit() {
   const username = document.getElementById('username').value.trim();
   const password = document.getElementById('password').value.trim();
+  const btn = document.getElementById('loginBtn');
+
+  btn.disabled = true;
+  btn.textContent = 'Signing in...';
 
   try {
-    const res = await fetch('/api/login', {
+    const res = await fetch('/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password })
     });
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      alert(err.message || "Login failed");
+    const data = await res.json().catch(() => ({}));
+
+    if (res.ok && data.success) {
+      window.location.href = "/dashboard";
       return;
     }
 
-    const data = await res.json();
-    if (data.success) {
-      // redirect to index.html (dashboard)
-      window.location.href = "/index.html";
-    } else {
-      alert("Invalid username or password");
-    }
+    // show inline message instead of alert
+    const note = document.querySelector('.note');
+    note.textContent = data.message || "Invalid username or password";
+    note.style.color = "rgba(255,150,150,0.9)";
   } catch (err) {
-    alert("API error: " + err.message);
+    const note = document.querySelector('.note');
+    note.textContent = "Server connection error — please try again.";
+    note.style.color = "rgba(255,150,150,0.9)";
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Login';
   }
 }
+
 
 
 // Lightbox (clean image + frosted caption)
