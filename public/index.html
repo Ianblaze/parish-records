@@ -169,33 +169,81 @@ footer{margin-top:16px;color:var(--muted);font-size:13px}
     </div>
 
     <!-- HTML -->
+<!-- put in footer (or replace your existing time lines) -->
 <footer>
   <div id="timeNow">Loading current time...</div>
   <div id="dbTime">Loading last DB update...</div>
 </footer>
 
 <script>
-// live clock (updates every minute)
+/** format Date obj into: "October 5, 2025 12:34 am" */
+function formatToUser(dateInput) {
+  const d = (typeof dateInput === 'string' || typeof dateInput === 'number') ? new Date(dateInput) : dateInput;
+
+  // ensure valid date
+  if (!d || isNaN(d.getTime())) return 'Invalid date';
+
+  // use Intl to get locale parts for month/day/year/time
+  const opts = {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  };
+
+  // produce something like: "October 5, 2025, 12:34 AM"
+  let s = d.toLocaleString('en-US', opts);
+
+  // remove the extra comma between date and time if present:
+  // eg "October 5, 2025, 12:34 AM" -> "October 5, 2025 12:34 AM"
+  // If the locale string uses other separators, this still handles the common case.
+  const parts = s.split(', ');
+  if (parts.length >= 2) {
+    // join all date parts except the last into the date part, then add time
+    const datePart = parts.slice(0, parts.length - 1).join(', ');
+    const timePart = parts[parts.length - 1];
+    s = `${datePart} ${timePart}`;
+  }
+
+  // make AM/PM lowercase 'am'/'pm'
+  s = s.replace(/\s(AM|PM)$/, m => m.toLowerCase());
+
+  return s;
+}
+
+/* live clock (updates every minute) */
 function updateCurrentTime() {
   const now = new Date();
-  const opts = { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true };
-  document.getElementById('timeNow').textContent = `${now.toLocaleString('en-US', opts)}`;
+  document.getElementById('timeNow').textContent = formatToUser(now);
 }
 updateCurrentTime();
-setInterval(updateCurrentTime, 60000);
+setInterval(updateCurrentTime, 60_000);
 
-// fetch deploy time once (static)
+/* fetch deploy time once (static until next redeploy) */
 fetch('/api/deployTime')
-  .then(r => r.json())
-  .then(d => {
-    if (d.deployTime) {
-      document.getElementById('dbTime').textContent = `Last updated at ${d.deployTime}`;
+  .then(r => {
+    if (!r.ok) throw new Error('Failed to fetch deploy time');
+    return r.json();
+  })
+  .then(data => {
+    // expect data.deployTimeISO (ISO string). if old server returned deployTime (string), handle fallback.
+    if (data.deployTimeISO) {
+      document.getElementById('dbTime').textContent = 'Last updated DB at ' + formatToUser(data.deployTimeISO);
+    } else if (data.deployTime) {
+      // fallback: server already formatted string (legacy)
+      document.getElementById('dbTime').textContent = 'Last updated DB at ' + data.deployTime;
+    } else {
+      document.getElementById('dbTime').textContent = 'Last updated DB at unknown';
     }
   })
-  .catch(() => {
-    document.getElementById('dbTime').textContent = 'Last updated at unknown';
+  .catch(err => {
+    console.warn('deployTime fetch error', err);
+    document.getElementById('dbTime').textContent = 'Last updated DB at unknown';
   });
 </script>
+
 
 
 
