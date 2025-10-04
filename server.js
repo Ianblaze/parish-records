@@ -26,19 +26,15 @@ const BASIC_USER = process.env.BASIC_USER;
 const BASIC_PASS = process.env.BASIC_PASS;
 
 // Endpoint to return the server's last deployment timestamp (formatted)
-const deployedAt = new Date();
+// record the time the process started (this will update only when the service is (re)deployed/restarted)
+const DEPLOYED_AT = new Date();
 
+// Returns a machine-readable timestamp; client will format to user's timezone
 app.get('/api/deployTime', (req, res) => {
-  const options = { 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric', 
-    hour: 'numeric', 
-    minute: '2-digit', 
-    hour12: true 
-  };
-  const formatted = deployedAt.toLocaleString('en-US', options);
-  res.json({ deployTime: formatted });
+  return res.json({
+    deployTimeISO: DEPLOYED_AT.toISOString(),   // e.g. "2025-10-04T14:16:00.000Z"
+    deployTimeEpoch: DEPLOYED_AT.getTime()      // milliseconds since epoch
+  });
 });
 
 

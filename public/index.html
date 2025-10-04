@@ -189,11 +189,11 @@ fetch('/api/deployTime')
   .then(r => r.json())
   .then(d => {
     if (d.deployTime) {
-      document.getElementById('dbTime').textContent = `Last updated DB at ${d.deployTime}`;
+      document.getElementById('dbTime').textContent = `Last updated at ${d.deployTime}`;
     }
   })
   .catch(() => {
-    document.getElementById('dbTime').textContent = 'Last updated DB at unknown';
+    document.getElementById('dbTime').textContent = 'Last updated at unknown';
   });
 </script>
 
